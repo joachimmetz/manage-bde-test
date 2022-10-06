@@ -1,0 +1,28 @@
+name: build
+on: [push]
+jobs:
+  run:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Mount test data
+      run: |
+        $Result = Mount-DiskImage -ImagePath "${PWD}\\bde_test.vhd" -PassThru
+        $DriveLetter = ($Result | Get-Disk | Get-Partition).DriveLetter
+        $SecureString = ConvertTo-SecureString "TESTBDE1" -AsPlainText -Force
+        Unlock-BitLocker -MountPoint "${DriveLetter}:" -Password $SecureString
+    - name: Show BDE status
+      run: |
+        $DriveLetter = (Get-DiskImage -ImagePath "${PWD}\\bde_test.vhd" | Get-Disk | Get-Partition).DriveLetter
+        manage-bde -status "${DriveLetter}:"
+        manage-bde -protectors -get "${DriveLetter}:"
+        manage-bde -protectors -add "${DriveLetter}:" -rp
+        manage-bde -protectors -get "${DriveLetter}:"
+    - name: Run manage-bde test script
+      run: |
+        python manage_bde_test.py
+    - name: Show BDE status
+      run: |
+        $DriveLetter = (Get-DiskImage -ImagePath "${PWD}\\bde_test.vhd" | Get-Disk | Get-Partition).DriveLetter
+        manage-bde -status "${DriveLetter}:"
+        manage-bde -protectors -get "${DriveLetter}:"
